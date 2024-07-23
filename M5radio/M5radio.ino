@@ -11,6 +11,8 @@
  * RDA5807 Arduino Library: https://github.com/pu2clr/RDA5807
  */
 
+// RDAラジオモジュール制御用ライブラリのためのヘッダファイル
+#include <RDA5807.h>
 #include "M5Dial.h"
 // M5Dial.h内に取り込まれているで以下は不要
 // #include <M5Unified.h>  // M5Stack全機種共通の統合ライブラリ
@@ -31,6 +33,24 @@
  * M5Fire	: M5Fire
  * M5Dial	: M5Dial M5stack
  */
+
+// DSPラジオチップRDA5807関連の設定
+// I2Cの設定
+// M5Core系
+// I2C bus pin on ESP32
+// #define ESP32_I2C_SDA 21  // M5stack Basic
+// #define ESP32_I2C_SCL 22  // M5stack Basic
+
+// M5Dial
+#define ESP32_I2C_SDA 13  // M5Dial
+#define ESP32_I2C_SCL 15  // M5Dial
+
+
+#define MAX_DELAY_RDS 40  // 40ms - polling method
+
+long rds_elapsed = millis();
+
+RDA5807 rx;
 
 // String version = "0.1";
 Theme theme;
@@ -56,11 +76,12 @@ struct station_t {
 };
 
 static const station_t station_list[] = {
-  { "FM岡山", "JOVV-FM", 768 },
-  { "Radio momo", "JOZZ8AD-FM", 790 },
-  { "FMくらしき", "JOZZ8AC-FM", 828 },
-  { "NHK FM岡山", "JOKK-FM", 887 },
-  { "RSKラジオ", "JOYR", 914 }
+  { "FM岡山", "JOVV-FM", 7680 },
+  //  { "Radio momo", "JOZZ8AD-FM", 7900 },
+  //  { "FMくらしき", "JOZZ8AC-FM", 8280 },
+  // { "NHK FM岡山", "JOKK-FM", 8870 },
+  { "NHK FM", "JOKK-FM", 8870 },
+  { "RSKラジオ", "JOYR", 9140 }
 };
 
 // 登録済み放送局数
@@ -77,12 +98,36 @@ long oldPosition = 0;
 int encode[3];
 
 void setup() {
+  // RDA5807の設定
+  // The line below may be necessary to setup I2C pins on ESP32
+  Wire.begin(ESP32_I2C_SDA, ESP32_I2C_SCL);
+  rx.setup();
+  rx.setVolume(3);  // volume (0 - 15)
+  rx.setBand(RDA_FM_BAND_WORLD);
+  /*
+ * FM band table
+ *
+ * | Name                   | Value | Description                 |
+ * | ---------------------- | ----- | --------------------------- |
+ * | RDA_FM_BAND_USA_EU     | 00    | 87–108 MHz (US/Europe)      |
+ * | RDA_FM_BAND_JAPAN_WIDE | 01    | 76–91 MHz (Japan)           |
+ * | RDA_FM_BAND_WORLD      | 10    | 76–108 MHz (world wide)     |
+ * | RDA_FM_BAND_SPECIAL    | 11    | 65 –76 MHz (East Europe) or 50-65MHz (see bit 9 of gegister 0x06) |
+*/
+  delay(500);
+  Serial.println("RDA5807 radio module Control");
+  rx.setFrequency(station_list[0].frequency);  // It is the frequency you want to select in MHz multiplied by 100.
+                                               // showHelp();
+  rx.setVolume(3);
+  delay(500);
+
+
   auto cfg = M5.config();
   M5Dial.begin(cfg, true, false);
   M5Dial.Display.setFont(&fonts::lgfxJapanGothicP_20);
 
+  // GUIコンポーネントの設定と初期化
   theme.init();
-
   baseframe = new BaseFrame(theme, "baseframe", 2, 0, 0, M5.Display.width(), M5.Display.height());
   baseframe->init();
 
@@ -126,9 +171,10 @@ void setup() {
   bs_callsign_label->setVerticalAlignment(CENTER);
 
   bs_name_label->setText(station_list[0].station_name);
-// String str;
+  // String str;
   char str[64];
-  sprintf(str, "%3.1f", ((float)station_list[0].frequency / 10));
+  sprintf(str, "%5.2f", ((float)station_list[0].frequency / 100.0));
+  rx.setFrequency(station_list[station_index].frequency);
   bs_freq_field->setText(str);
   bs_callsign_label->setText(station_list[0].callsign);
 
@@ -152,6 +198,7 @@ void setup() {
 }
 
 void drawFrame_BroadcastStation(int rotation_direction) {
+  if (rotation_direction == 0) return;
   char str[64];
   station_index += rotation_direction;
   if (station_index >= station_count) {
@@ -164,7 +211,9 @@ void drawFrame_BroadcastStation(int rotation_direction) {
   Serial.print(",");
   Serial.println(rotation_direction);
   bs_name_label->setText(station_list[station_index].station_name);
-  sprintf(str, "%3.1f", ((float)station_list[station_index].frequency / 10));
+  sprintf(str, "%5.2f", ((float)station_list[station_index].frequency / 100.0));
+  Serial.println(str);
+  rx.setFrequency(station_list[station_index].frequency);
   bs_freq_field->setText(str);
   bs_callsign_label->setText(station_list[station_index].callsign);
 
@@ -174,22 +223,24 @@ void drawFrame_BroadcastStation(int rotation_direction) {
 }
 
 void drawFrame_Volume(int rotation_direction) {
-  
-    volume_value += rotation_direction;
-    if (volume_value > 15) {
-      volume_value = 15;
-    }
-    if (0 > volume_value) {
-      volume_value = 0;
-    }
-    Serial.print(volume_value);
-    Serial.print(",");
-    Serial.println(rotation_direction);
-    vol_textlabel->setText("音量");  // Volume
-    vol_textfield->setText(String(volume_value));
-    vol_textfield->update();
-    vol_progressbar->setValue(volume_value);
-    vol_progressbar->update();
+  if (rotation_direction == 0) return;
+  volume_value += rotation_direction;
+  if (volume_value > 15) {
+    volume_value = 15;
+  }
+  if (0 > volume_value) {
+    volume_value = 0;
+  }
+  Serial.print(volume_value);
+  Serial.print(",");
+  Serial.println(rotation_direction);
+  vol_textlabel->setText("音量");  // Volume
+  vol_textfield->setText(String(volume_value));
+  vol_textfield->update();
+  vol_progressbar->setValue(volume_value);
+  vol_progressbar->update();
+  rx.setVolume(volume_value);
+  Serial.println(volume_value);
 }
 
 void loop() {
@@ -197,19 +248,19 @@ void loop() {
   newPosition = M5Dial.Encoder.read();
   if (newPosition != oldPosition) {
     M5Dial.Speaker.tone(1980, 20);
-    // 以下はチャタリング防止のために、 
+    // 以下はチャタリング防止のために、
     encode[2] = encode[1];
     encode[1] = encode[0];
     encode[0] = newPosition - oldPosition;
     int sum = encode[0] + encode[1] + encode[2];
     int Rotation_direction = 0;
-    if (      sum >= 2) Rotation_direction =  1;
-    if (-2 >= sum     ) Rotation_direction = -1;
+    if (sum >= 2) Rotation_direction = 1;
+    if (-2 >= sum) Rotation_direction = -1;
     if (Rotation_direction == 0) return;
-    switch(frame_index) {
-      case 0 : drawFrame_BroadcastStation(Rotation_direction); break;
-      case 1 : drawFrame_Volume(Rotation_direction); break;
-      default : break;
+    switch (frame_index) {
+      case 0: drawFrame_BroadcastStation(Rotation_direction); break;
+      case 1: drawFrame_Volume(Rotation_direction); break;
+      default: break;
     }
     oldPosition = newPosition;
   }
@@ -222,14 +273,22 @@ void loop() {
     if (frame_index >= 2) {
       frame_index = 0;
     }
-    switch(frame_index) {
-      case 0 : drawFrame_BroadcastStation(0); break;
-      case 1 : drawFrame_Volume(0); break;
-      default : break;
+    switch (frame_index) {
+      case 0:
+        bs_name_label->update();
+        bs_callsign_label->update();
+        bs_freq_field->update();
+        break;
+      case 1:
+        vol_textlabel->update();
+        vol_textfield->update();
+        vol_progressbar->update();
+        break;
+      default: break;
     }
   }
   if (M5Dial.BtnA.pressedFor(5000)) {
     M5Dial.Encoder.write(100);
   }
-  delay(100);
+  delay(200);
 }
