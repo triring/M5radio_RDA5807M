@@ -16,6 +16,20 @@ OriginComponent::OriginComponent(Theme parent_theme, String name, int fontSize, 
   this->theme->name = parent_theme.name;
   this->theme->fontSize = parent_theme.fontSize;
   // black & white
+  this->theme->white      = parent_theme.white;
+  this->theme->black      = parent_theme.black;
+  // primary color
+  this->theme->primary1   = parent_theme.primary1;
+  this->theme->primary2   = parent_theme.primary2;
+  this->theme->primary3   = parent_theme.primary3;
+  // secondary color
+  this->theme->secondary1 = parent_theme.secondary1;
+  this->theme->secondary2 = parent_theme.secondary2;
+  this->theme->secondary3 = parent_theme.secondary3;
+
+
+/*
+  // black & white
   this->theme->white = M5.Display.color565(255, 255, 255);
   this->theme->black = M5.Display.color565(0, 0, 0);
   // primary color
@@ -26,6 +40,7 @@ OriginComponent::OriginComponent(Theme parent_theme, String name, int fontSize, 
   this->theme->secondary1 = M5.Display.color565(102, 102, 102);
   this->theme->secondary2 = M5.Display.color565(153, 153, 153);
   this->theme->secondary3 = M5.Display.color565(204, 204, 204);
+*/
   setFontSize(fontSize);  
 }
 
@@ -48,7 +63,18 @@ void OriginComponent::setFontSize(int fontSize) {
 }
 
 void OriginComponent::setColorSet(uint8_t colorset[][3]) {
-  this->theme->setColorSet(colorset);
+// this->theme->setColorSet(colorset);
+  // black & white
+  this->theme->white      = M5.Display.color565(colorset[0][0],colorset[0][1],colorset[0][2]);
+  this->theme->black      = M5.Display.color565(colorset[1][0],colorset[1][1],colorset[1][2]);
+  // primary color
+  this->theme->primary1   = M5.Display.color565(colorset[2][0],colorset[2][1],colorset[2][2]);
+  this->theme->primary2   = M5.Display.color565(colorset[3][0],colorset[3][1],colorset[3][2]);
+  this->theme->primary3   = M5.Display.color565(colorset[4][0],colorset[4][1],colorset[4][2]);
+  // secondary color
+  this->theme->secondary1 = M5.Display.color565(colorset[5][0],colorset[5][1],colorset[5][2]);
+  this->theme->secondary2 = M5.Display.color565(colorset[6][0],colorset[6][1],colorset[6][2]);
+  this->theme->secondary3 = M5.Display.color565(colorset[7][0],colorset[7][1],colorset[7][2]);
 }
 
 // テキストの水平方向配置を設定する

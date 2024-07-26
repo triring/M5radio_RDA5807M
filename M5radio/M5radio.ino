@@ -128,6 +128,13 @@ void setup() {
 
   // GUIコンポーネントの設定と初期化
   theme.init();
+  // Palette.h 内で定義されているカラーセットを読み込み。テーマを初期化する。
+  // Palette.h 内の定義と同じ様に色定義のデータを準備し、ここで読み込ませてもよい。
+// theme.setColorSet(Palette_default);
+   theme.setColorSet(Palette_PalmPilot);
+// theme.setColorSet(Palette_HighContrast);
+// theme.setColorSet(Palette_reverse);
+
   baseframe = new BaseFrame(theme, "baseframe", 2, 0, 0, M5.Display.width(), M5.Display.height());
   baseframe->init();
 
