@@ -71,6 +71,9 @@ Arduino-IDE
 前述の簡易GUIコンポーネントは、オブジェクトの配色を個別に設定できる。しかし、配色がバラバラでは統一感に欠ける。
 そこで、Java Swing の設計思想を見習い、カラーテーマとして、白、黒、プライマリー 3色、セカンダリー 3色の合計8色の色配列を定義し、それを読み込んでコンポーネントに反映させる機能を追加した。  
 
+[Java Look and Feel Design Guidelines](https://course.khoury.northeastern.edu/is4300f16/ssl/JLFDG.pdf)
+
+
 使い方は、以下の通りである。
 
 1. ヘッダファイルPalette.h 内に、以下のような8色の色配列を定義する。
@@ -109,7 +112,8 @@ textfield = new TextField(theme, "field1", 2, 0, 60, 240, 60);
 btnA = new Button(theme, "buttonA", 2, 0, 180, 240, 60);
 ```  
 
-以下は、テーマを入替えたテスト用アプリの実行画面
+以下は、各テーマを切替えて表示するテストアプリの実行画面で、このアプリのソースリストは、examplesディレクトリ内のThemeSampleにある。　　
+このアプリは、単に表示を切替えるだけなので、ラジオモジュールが接続されていなくても、M5Dial単体で実行可能である。  
 
 <img src="./photo/theme/DSCN8144_800x600.jpg" width="30%">
 <img src="./photo/theme/DSCN8145_800x600.jpg" width="30%">
