@@ -2,8 +2,8 @@
  * @file M5radio.ino
  * @author @triring
  * @brief Controlling DSP radio with M5Dial (DSPラジオをマイコンでコントロールする)
- * @version 0.2
- * @date 2024-07-20
+ * @version 0.3
+ * @date 2024-10-02
  *
  * @Hardwares: M5Dial,Grove-I2C-FM-Receiver-v1-1(SeeedStudio)
  * @Dependent Library:
@@ -14,7 +14,7 @@
 // RDAラジオモジュール制御用ライブラリのためのヘッダファイル
 #include <RDA5807.h>
 #include "M5Dial.h"
-// M5Dial.h内に取り込まれているで以下は不要
+// M5Dial.h内に取り込まれているので以下は不要
 // #include <M5Unified.h>  // M5Stack全機種共通の統合ライブラリ
 
 #include "Palette.h"
@@ -50,7 +50,7 @@
 
 long rds_elapsed = millis();
 
-RDA5807 rx;
+RDA5807 rda;
 
 // String version = "0.1";
 Theme theme;
@@ -75,19 +75,28 @@ struct station_t {
   const int frequency;
 };
 
+// 岡山県のFM放送局
 static const station_t station_list[] = {
   { "FM岡山", "JOVV-FM", 7680 },
-  //  { "Radio momo", "JOZZ8AD-FM", 7900 },
-  //  { "FMくらしき", "JOZZ8AC-FM", 8280 },
+  { "Radio momo", "JOZZ8AD-FM", 7900 },
+  // { "FMくらしき", "JOZZ8AC-FM", 8280 },
   // { "NHK FM岡山", "JOKK-FM", 8870 },
   { "NHK FM", "JOKK-FM", 8870 },
   { "RSKラジオ", "JOYR", 9140 }
 };
 
+// 香川県のFM放送局
+/*
+static const station_t station_list[] = {
+  { "FM香川", "JOYU-FM", 7860 },
+  { "NHK FM", "JOHP-FM", 8600 },
+  { "西日本放送", "JOKF", 9030 }
+};
+ */
 // 登録済み放送局数
 static constexpr const size_t station_count = sizeof(station_list) / sizeof(station_list[0]);
 
-int volume_value = 3;
+int volume_value = 1;
 int station_index = 0;
 
 // フレームの切替え
@@ -101,9 +110,8 @@ void setup() {
   // RDA5807の設定
   // The line below may be necessary to setup I2C pins on ESP32
   Wire.begin(ESP32_I2C_SDA, ESP32_I2C_SCL);
-  rx.setup();
-  rx.setVolume(3);  // volume (0 - 15)
-  rx.setBand(RDA_FM_BAND_WORLD);
+  rda.setup();
+  rda.setBand(RDA_FM_BAND_WORLD);
   /*
  * FM band table
  *
@@ -116,11 +124,10 @@ void setup() {
 */
   delay(500);
   Serial.println("RDA5807 radio module Control");
-  rx.setFrequency(station_list[0].frequency);  // It is the frequency you want to select in MHz multiplied by 100.
-                                               // showHelp();
-  rx.setVolume(3);
+  rda.setFrequency(station_list[0].frequency);  // It is the frequency you want to select in MHz multiplied by 100.
+                                                // showHelp();
+  rda.setVolume(volume_value);  // volume (0 - 15)
   delay(500);
-
 
   auto cfg = M5.config();
   M5Dial.begin(cfg, true, false);
@@ -130,10 +137,10 @@ void setup() {
   theme.init();
   // Palette.h 内で定義されているカラーセットを読み込み。テーマを初期化する。
   // Palette.h 内の定義と同じ様に色定義のデータを準備し、ここで読み込ませてもよい。
-// theme.setColorSet(Palette_default);
-   theme.setColorSet(Palette_PalmPilot);
-// theme.setColorSet(Palette_HighContrast);
-// theme.setColorSet(Palette_reverse);
+  // theme.setColorSet(Palette_default);
+  theme.setColorSet(Palette_PalmPilot);
+  // theme.setColorSet(Palette_HighContrast);
+  // theme.setColorSet(Palette_reverse);
 
   baseframe = new BaseFrame(theme, "baseframe", 2, 0, 0, M5.Display.width(), M5.Display.height());
   baseframe->init();
@@ -181,7 +188,7 @@ void setup() {
   // String str;
   char str[64];
   sprintf(str, "%5.2f", ((float)station_list[0].frequency / 100.0));
-  rx.setFrequency(station_list[station_index].frequency);
+  rda.setFrequency(station_list[station_index].frequency);
   bs_freq_field->setText(str);
   bs_callsign_label->setText(station_list[0].callsign);
 
@@ -220,7 +227,7 @@ void drawFrame_BroadcastStation(int rotation_direction) {
   bs_name_label->setText(station_list[station_index].station_name);
   sprintf(str, "%5.2f", ((float)station_list[station_index].frequency / 100.0));
   Serial.println(str);
-  rx.setFrequency(station_list[station_index].frequency);
+  rda.setFrequency(station_list[station_index].frequency);
   bs_freq_field->setText(str);
   bs_callsign_label->setText(station_list[station_index].callsign);
 
@@ -246,7 +253,7 @@ void drawFrame_Volume(int rotation_direction) {
   vol_textfield->update();
   vol_progressbar->setValue(volume_value);
   vol_progressbar->update();
-  rx.setVolume(volume_value);
+  rda.setVolume(volume_value);
   Serial.println(volume_value);
 }
 
